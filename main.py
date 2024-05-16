@@ -7,7 +7,7 @@ import matplotlib
 IMAGE_SHAPE = (224, 224)
 TRAINING_DATA_DIR = "input/training/training/"
 VALID_DATRA_DIR = "input/validation/validation/"
-EPOCHS = 20
+EPOCHS = 5
 BATCH_SIZE = 32
 
 def build_model(num_classes : int):
@@ -90,5 +90,10 @@ train_loss = history.history['loss']
 train_acc = history.history['accuracy']
 valid_loss = history.history['val_loss']
 valid_acc = history.history['val_accuracy']
+
+print(train_loss)
+print(train_acc)
+print(valid_loss)
+print(valid_acc)
 
 save_plots(train_acc, valid_acc, train_loss, valid_loss)
