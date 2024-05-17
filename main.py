@@ -7,7 +7,7 @@ import matplotlib
 IMAGE_SHAPE = (224, 224)
 TRAINING_DATA_DIR = "input/training/training/"
 VALID_DATRA_DIR = "input/validation/validation/"
-EPOCHS = 5
+EPOCHS = 20
 BATCH_SIZE = 32
 
 def build_model(num_classes : int):
