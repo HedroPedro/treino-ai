@@ -19,33 +19,35 @@ def build_model(num_classes : int):
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
         tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), activation="relu"),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
+        tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), activation="relu"),
+        tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(64, activation="relu"),
+        tf.keras.layers.Dense(128, activation="relu"),
         tf.keras.layers.Dense(num_classes, activation="softmax")
     ])
     return model
 
 def save_plots(train_acc, valid_acc, train_loss, valid_loss):
     """
-    Função para salvar os plots de perda e precisão
+    Função para salvar os plots de perda e acuracia
     """
 
     # plots de precisão
     plt.figure(figsize=(12, 9))
     plt.plot(
         train_acc, color="green", linestyle='-',
-        label="precisão do treino"
+        label="acuracia do treino"
     )
 
     plt.plot(
         valid_acc, color="blue", linestyle='-', 
-        label="precisão da validação"
+        label="acuracia da validação"
         )
 
     plt.xlabel("Epocas")
-    plt.ylabel("Precisão")
+    plt.ylabel("Acuracia")
     plt.legend()
-    plt.savefig("precisao.png")
+    plt.savefig("acuracia.png")
 
     # Plot de perda
     plt.figure(figsize=(12, 9))
@@ -90,10 +92,5 @@ train_loss = history.history['loss']
 train_acc = history.history['accuracy']
 valid_loss = history.history['val_loss']
 valid_acc = history.history['val_accuracy']
-
-print(train_loss)
-print(train_acc)
-print(valid_loss)
-print(valid_acc)
 
 save_plots(train_acc, valid_acc, train_loss, valid_loss)
