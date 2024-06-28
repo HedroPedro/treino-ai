@@ -9,36 +9,40 @@ INPUT_SHAPE = (224, 224, 3)
 TRAINING_DATA_DIR = "input/training/training/"
 VALID_DATRA_DIR = "input/validation/validation/"
 EPOCHS = 20
-BATCH_SIZE = 32
+BATCH_SIZE = 34
 
 def build_model(num_classes):
-    model = tf.keras.Sequential([
-    tf.keras.layers.Conv2D(filters=8, kernel_size=(3, 3), activation='relu', 
-                           input_shape=(224, 224, 3)),
-    tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
-    tf.keras.layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'),
-    tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
-    tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'),
-    tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
-    tf.keras.layers.Flatten(),
-    tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dense(num_classes, activation='softmax')
+    tf.keras.Sequential([tf.keras.layers.Conv2D(filters=8, kernel_size=(3, 3), activation='relu', 
+                           padding="same"),
+        tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
+        tf.keras.layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
+        tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(num_classes, activation='softmax')
     ])
     return model
 
 def build_model_tranfer(num_classes : int):
+    data_augmentation = tf.keras.Sequential([
+        tf.keras.layers.RandomFlip("horizontal", input_shape=INPUT_SHAPE),
+    ], "augmentation")
+
     # Pegamos o modelo pré-pronto
     model_v2_layer = tf.keras.applications.MobileNetV2(
         input_shape=INPUT_SHAPE,
         include_top=False,
         weights="imagenet"
     )
-
     model_v2_layer.trainable = False # IMPORTANTE! Não quemos mudar os pesos da rede neural
-    print(model_v2_layer.summary())
+
     model = tf.keras.Sequential([
+        data_augmentation,
         model_v2_layer,
         tf.keras.layers.GlobalAveragePooling2D(),
+        tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(64, activation="relu"),
         tf.keras.layers.Dense(num_classes, activation="softmax")
     ])
@@ -91,11 +95,12 @@ train_generator = datagen.flow_from_directory(TRAINING_DATA_DIR, shuffle=True, t
 valid_generator = datagen.flow_from_directory(VALID_DATRA_DIR, shuffle=True, target_size=IMAGE_SHAPE)
 
 model = build_model_tranfer(num_classes=10)
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
               loss=tf.keras.losses.CategoricalCrossentropy(from_logits=False),
               metrics=['accuracy']
               )
-print(model.summary())
+
+model.summary()
 
 history = model.fit(train_generator,
                     steps_per_epoch=train_generator.samples // BATCH_SIZE,
@@ -103,7 +108,7 @@ history = model.fit(train_generator,
                     validation_data=valid_generator,
                     validation_steps=valid_generator.samples // BATCH_SIZE,
                     verbose=1
-                    )
+                )
 
 train_loss = history.history['loss']
 train_acc = history.history['accuracy']
