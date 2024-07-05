@@ -10,26 +10,27 @@ TRAINING_DATA_DIR = "input/training/training/"
 VALID_DATRA_DIR = "input/validation/validation/"
 EPOCHS = 20
 BATCH_SIZE = 34
+AUTOTUNE = tf.data.AUTOTUNE
+
+res = tf.keras.layers.Rescaling(1./255, input_shape=INPUT_SHAPE)
 
 def build_model(num_classes):
-    tf.keras.Sequential([tf.keras.layers.Conv2D(filters=8, kernel_size=(3, 3), activation='relu', 
-                           padding="same"),
+    model = tf.keras.Sequential([
+        res,
+        tf.keras.layers.Conv2D(filters=8, kernel_size=(3, 3), activation='relu', padding="same"),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
-        tf.keras.layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu', padding="same"),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
-        tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu', padding="same"),
         tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
-        tf.keras.layers.Flatten(),
+        tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', padding="same"),
+        tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2),
         tf.keras.layers.Dense(64, activation='relu'),
         tf.keras.layers.Dense(num_classes, activation='softmax')
     ])
     return model
 
 def build_model_tranfer(num_classes : int):
-    data_augmentation = tf.keras.Sequential([
-        tf.keras.layers.RandomFlip("horizontal", input_shape=INPUT_SHAPE),
-    ], "augmentation")
-
     # Pegamos o modelo pré-pronto
     model_v2_layer = tf.keras.applications.MobileNetV2(
         input_shape=INPUT_SHAPE,
@@ -38,8 +39,10 @@ def build_model_tranfer(num_classes : int):
     )
     model_v2_layer.trainable = False # IMPORTANTE! Não quemos mudar os pesos da rede neural
 
+    model_v2_layer.summary()
+
     model = tf.keras.Sequential([
-        data_augmentation,
+        res,
         model_v2_layer,
         tf.keras.layers.GlobalAveragePooling2D(),
         tf.keras.layers.Flatten(),
@@ -88,27 +91,37 @@ def save_plots(train_acc, valid_acc, train_loss, valid_loss):
 
 matplotlib.style.use("ggplot")
 
-datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
+train_ds = tf.keras.utils.image_dataset_from_directory(
+    TRAINING_DATA_DIR,
+    image_size=IMAGE_SHAPE,
+    batch_size=BATCH_SIZE,
+    label_mode="categorical",
+    shuffle=True)
 
-train_generator = datagen.flow_from_directory(TRAINING_DATA_DIR, shuffle=True, target_size=IMAGE_SHAPE)
+valid_ds = tf.keras.utils.image_dataset_from_directory(
+    VALID_DATRA_DIR,
+    image_size=IMAGE_SHAPE,
+    batch_size=BATCH_SIZE,
+    label_mode="categorical",
+    shuffle=True)
 
-valid_generator = datagen.flow_from_directory(VALID_DATRA_DIR, shuffle=True, target_size=IMAGE_SHAPE)
+train_ds_flipped = train_ds.map(lambda x,y : (tf.image.flip_left_right(x), y))
+train_ds = train_ds.concatenate(train_ds_flipped).shuffle(BATCH_SIZE)
 
-model = build_model_tranfer(num_classes=10)
+train_ds = train_ds.cache().prefetch(buffer_size=AUTOTUNE)
+valid_ds = valid_ds.cache().prefetch(buffer_size=AUTOTUNE)
+
+model = build_model(num_classes=10)
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-              loss=tf.keras.losses.CategoricalCrossentropy(from_logits=False),
-              metrics=['accuracy']
-              )
+              loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
 
 model.summary()
 
-history = model.fit(train_generator,
-                    steps_per_epoch=train_generator.samples // BATCH_SIZE,
+history = model.fit(train_ds,
                     epochs=EPOCHS,
-                    validation_data=valid_generator,
-                    validation_steps=valid_generator.samples // BATCH_SIZE,
-                    verbose=1
-                )
+                    validation_data=valid_ds,
+                    verbose=1)
 
 train_loss = history.history['loss']
 train_acc = history.history['accuracy']
