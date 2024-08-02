@@ -123,7 +123,7 @@ def conv_2d_ai():
 
 if __name__ == "__main__":
     matplotlib.style.use("ggplot")
-    history = segmentation_ai()
+    history = conv_2d_ai()
 
     train_loss = history.history['loss']
     train_acc = history.history['accuracy']
